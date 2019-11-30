@@ -5,12 +5,11 @@
         </div>
         <div class='timesheet-container'>
             <div class='date-entries'>
-                <h3>Open</h3>
                 <div class='entries-by-date'>
-                    <timesheet-entry v-for='(entry, index) in entries' :key='index' :entry='entry'
-                    @click='select("open-entry-"+index)' :ref='"open-entry-"+index'
-                    :class='{"selected": isSelected("open-entry-"+index) }' @deleteEmpty='deleteEmpty' 
-                    :index='index' @save='save' />
+                    <timesheet-entry v-for='(entry, index) in sortedEntries' :key='entry.id' :entry='entry'
+                    @click='select(index)' :ref='"open-entry-"+entry.id'
+                    :class='{"selected": isSelected(index) }' @deleteEmpty='deleteEmpty' 
+                    :index='index' :id='index' @save='save' />
                 </div>
             </div>
         </div>
@@ -26,29 +25,24 @@ export default {
     components: {
         TimesheetEntry
     },
-    data() {
-        return {
-            test: 'pass'
-        }
-    },
     methods: {
         isSelected(entry) {
             return this.selectedEntry === entry
         },
         createEntry() {
-            this.$store.state.user.entries.push({
-              date: new Date().toLocaleString(),
-              clockIn: new Date().toLocaleString(),
-              clockOut: null,
-              userId: this.user.id,
+            this.sortedEntries.push({
+              date: this.today.toISOString(),
+              clock_in: this.today.toLocaleTimeString().slice(0, -3),
+              clock_out: null,
+              user_id: this.user.id,
               clockedOut: false,
               id: null
             })
-            this.select(`open-entry-${this.entries.length - 1}`)
+            this.select(this.entries.length - 1)
         },
         deleteEmpty() {
             console.log('deleting entry')
-            this.$store.state.user.entries.pop()
+            this.sortedEntries.pop()
         },
         viewLog() {
 
@@ -67,7 +61,17 @@ export default {
             'selectedEntry',
             'entries',
             'user'
-        ])
+        ]),
+        today() {
+            return new Date()
+        },
+        sortedEntries() {
+            if (this.entries) {
+                return this.entries.sort( (a, b) => { new Date(b.date) - new Date(a.date) })
+            } else {
+                return []
+            }
+        }
     }
 }
 </script>
@@ -134,7 +138,7 @@ export default {
                 width: 100%;
                 margin-top: 2em;
                 &:last-of-type {
-                    margin: 0;
+                    margin-top: 0;
                 }
             }
         }

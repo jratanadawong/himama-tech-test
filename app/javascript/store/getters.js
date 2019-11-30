@@ -11,4 +11,7 @@ export const getters = {
   entries(state) {
     return state.user.entries
   },
+  flashMessage(state) {
+    return state.flashMessage
+  },
 }

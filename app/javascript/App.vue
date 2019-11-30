@@ -1,8 +1,27 @@
 <template>
   <div id='app'>
+    <flash-message>
+      {{ flashMessage.message }}
+    </flash-message>
     <router-view />
   </div>
 </template>
+<script>
+import { mapGetters } from 'vuex'
+import FlashMessage from './components/FlashMessage'
+
+export default {
+  name: 'app',
+  components: {
+    FlashMessage
+  },
+  computed: {
+    ...mapGetters([
+      'flashMessage'
+    ])
+  }
+}
+</script>
 
 <style lang='scss'>
 :root {

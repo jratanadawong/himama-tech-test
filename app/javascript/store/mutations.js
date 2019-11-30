@@ -17,10 +17,20 @@ export const mutations = {
   setAuthToken(state, token) {
     state.user.authToken = token
   },
+  setFlashMessage(state, message) {
+    state.flashMessage = {
+      message: message.message,
+      error: message.error || false,
+      show: true
+    }
+  },
+  dismissFlashMessage(state) {
+    state.flashMessage.show = false
+  },
   setUser(state, userData) {
     state.user = {
       ...userData.user,
-      entries: userData.entries,
+      entries: userData.entries || [],
       authToken: userData.auth_token
     }
   },
@@ -39,7 +49,9 @@ export const mutations = {
     .then(response => {
       state.user.entries = response.data.entries
     })
-    .catch(e => console.log('error: ', e))
+    .catch(e => {
+      setFlashMessage({ message: `Error fetching entries: ${e}`, error: true })
+    })
     
   }
 }

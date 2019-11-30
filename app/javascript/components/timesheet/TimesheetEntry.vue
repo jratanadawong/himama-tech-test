@@ -1,22 +1,22 @@
 <template>
-    <div class='timesheet-entry' @click.stop='clicked($event)' :class='{"error": hasError}'>
+    <div class='timesheet-entry' @click.stop='clicked($event)' :class='{"error": hasError, "closed": clockedOut}'>
         <div class='entry-header'>
             <span class='entry-date'>
                 <strong>Date:</strong> 
-                <datetime type='date' v-model='date' ref='date' :maxDatetime='today' use12-hour> </datetime>
+                <datetime type='date' v-model='entry.date' ref='date' :maxDatetime='today.toISOString()' use12-hour> </datetime>
             </span>
         </div>
         <div class='entry-body'>
             <div class='clocked-in'>
                 <strong>Clocked in:</strong>
-                <input v-model='clockIn' >
+                <vue-timepicker v-model='entry.clock_in' format='HH:mm' hide-clear-button close-on-complete ref='clockIn' />
             </div>
             <div class='chip clocked-out' v-if='!clockedOut' @click.stop='clockOutNow'>
                 <strong>Clock Out!</strong>
             </div>
             <div class='clocked-out' v-else>
                 <strong>Clocked out:</strong>
-                <input v-model='clockOut' >
+                <vue-timepicker v-model='entry.clock_out' format='HH:mm' hide-clear-button close-on-complete ref='clockOut' />
             </div>
         </div>
         <div class='entry-actions'>
@@ -28,100 +28,75 @@
 
 <script>
 import axios from 'axios'
+import Vue from 'vue'
 import { mapGetters } from 'vuex'
 import { Datetime } from 'vue-datetime'
-import Timeselector from 'vue-timeselector'
-import get from 'lodash/fp/get'
+import VueTimepicker from 'vue2-timepicker'
 
+import get from 'lodash/fp/get'
+import isNull from 'lodash/fp/isNull'
+
+import 'vue2-timepicker/dist/VueTimepicker.css'
 import 'vue-datetime/dist/vue-datetime.css'
 
 export default {
     name: 'TimesheetEntry',
     components: {
         Datetime,
-        Timeselector
-    },
-    watch: {
-        // date: function(newVal, oldVal) {
-        //     if (oldVal && newVal.slice(0, 10) != oldVal.slice(0, 10)) {
-        //         this.hasChanged = true
-        //     }
-        // },
-        // clockIn: function(newVal, oldVal) {
-        //     if (oldVal && newVal != oldVal.slice(0, -3)) {
-        //         this.hasChanged = true
-        //     }
-        // },
-        // clockOut: function(newVal, oldVal) {
-        //     if (oldVal && newVal != oldVal.slice(0, -3)) {
-        //         this.hasChanged = true
-        //     }
-        // },
+        VueTimepicker
     },
     computed: {
         ...mapGetters([
             'user'
         ]),
         clockedOut() {
-            return (this.entry.clockOut !== null )
+            const clockedOut = isNull(this.entry.clock_out)
+            return !clockedOut
         },
         hasError() {
-            return (this.entry.clockIn && this.entry.clockOut) && this.entry.clockIn > this.entry.clockOut
+            return (this.entry.clock_in && this.entry.clock_out) && this.entry.clock_in > this.entry.clock_out
         },
         today() {
-            return new Date().toISOString()
+            return new Date()
         }
     },
     methods: {
-        updateClockInTime() {
-            const picker = this.$refs.clockIn.picker
-            const h = picker.hour
-            const m = picker.minute
-            const ampm = picker.ampm
-            const val = `${h}:${m}${ampm}`
-            console.log('update in: ', val)
-            this.clockIn = val
-        },
-        updateClockOutTime() {
-            const picker = this.$refs.clockOut.picker
-            const h = picker.hour
-            const m = picker.minute
-            const ampm = picker.ampm
-            const val = `${h}:${m}${ampm}`
-            console.log('update out: ', val)
-            this.clockOut = val
+        convertToRealTime(vueTime) {
+            if (typeof vueTime === 'string' || vueTime === null) return vueTime
+            return `${vueTime.HH}:${vueTime.MM}`
         },
         clicked(event) {
             this.$emit('click', this.$event)
         },
         cancel() {
-            this.date = this.original.date ? this.original.date : this.today
-            this.clockIn = this.original.clockIn ? this.original.clockIn : this.clockIn
-            this.clockOut = this.original.clockOut
+            this.entry.date = this.original.date
+            this.entry.clock_in = this.original.clock_in
+            this.entry.clock_out = this.original.clock_out
             if (this.clockedOut === false) {
                 this.$emit('deleteEmpty')
             }
             this.$store.dispatch('closeOverlay')
         },
         clockOutNow() {
-            this.clockOut = new Date().toISOString()
+            const clockOutTime = this.today.toLocaleTimeString().slice(0, -3)
+            this.entry.clock_out = clockOutTime
             this.save()
         },
         save() {
             this.updateOriginal()
-            const isNew = (this.id === null)
-            console.log('isNew? ', isNew, '\nid: ', this.id)
-            const url = isNew ? '/api/v1/entries/' : `/api/v1/entries/${this.id}`
+            const isNew = (this.entry.id === null)
+            console.log('isNew? ', isNew, '\nid: ', this.entry.id)
+            const url = isNew ? '/api/v1/entries/' : `/api/v1/entries/${this.entry.id}`
             const verb = isNew ? 'POST' : 'PUT'
+            console.log('date: ', this.entry.date)
+            console.log('formatted date: ', new Date(this.entry.date))
             const params = {
                 entry: {
-                    clock_out: this.clockOut,
-                    clock_in: this.clockIn,
-                    date: this.date,
-                    user_id: this.user.id
+                    clock_out: this.convertToRealTime(this.entry.clock_out),
+                    clock_in: this.convertToRealTime(this.entry.clock_in),
+                    date: new Date(this.entry.date)
                 }
             }
-            if (isNew) params.entry.id = this.id
             axios({method: verb, url: url, 
                 headers: { Authorization: this.user.authToken },
                 data: params
@@ -131,16 +106,15 @@ export default {
                 this.$store.dispatch('getEntries')
             })
             .catch(e => {
-                console.log('Error saving new entry: ', e)
+                this.$store.dispatch('setFlashMessage', { message: `Error saving new entry: ${e}`, error: true })
             })
         },
         updateOriginal() {
-            this.hasChanged = false
             this.original = {
                 ...this.original,
-                clockOut: this.clockOut,
-                clockIn: this.clockIn,
-                date: this.date
+                clock_out: this.entry.clock_out,
+                clock_in: this.entry.clock_in,
+                date: this.entry.date
             }
         }
     },
@@ -150,18 +124,13 @@ export default {
     },
     data() {
         return {
-            clockIn: new Date(),
-            clockOut: new Date(),
-            date: get('date')(this.entry),
-            id: get('id')(this.entry),
             original: null,
-            hasChanged: null
         }
     },
 }
 </script>
 <style lang='scss'>
-    .closed .timesheet-entry {
+    .closed.timesheet-entry {
         opacity: .5;
         &.selected, &:hover, &:focus {
             opacity: 1;
@@ -173,9 +142,9 @@ export default {
         border-radius: 0.3em;
         box-shadow: var(--box-shadow);
         background-color: var(--entry);
-        margin-bottom: 2em;
-        .vtimeselector__clear__ico {
-            display: none;
+        margin-bottom: 1em;
+        .clear-btn {
+            display: none !important;
         }
         &.error {
             input.display-time {
@@ -242,6 +211,9 @@ export default {
         .entry-header, .entry-body {
             width: calc(100% - 2em);
             padding: .5em 1em;
+            .dropdown, {
+                z-index: 11;
+            }
         }
         .entry-header {
             border-bottom: 1px solid var(--white);
@@ -257,7 +229,7 @@ export default {
                 align-items: center;
             }
             input {
-                max-width: 5em;
+                max-width: 8em;
             }
             .clocked-in, .clocked-out {
                 display: flex;

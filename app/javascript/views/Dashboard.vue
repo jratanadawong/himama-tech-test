@@ -14,6 +14,7 @@
 <script>
 import { mapGetters } from 'vuex'
 
+import store from '../store/store'
 import Timesheet from '../components/timesheet/Timesheet'
 
 export default {
@@ -34,6 +35,10 @@ export default {
             'overlay',
             'user'
         ])
+    },
+    beforeRouteEnter (to, from, next) {
+        store.dispatch('getEntries')
+        next()
     }
 }
 </script>

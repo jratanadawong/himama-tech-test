@@ -13,9 +13,9 @@
 ActiveRecord::Schema.define(version: 2019_11_29_182507) do
 
   create_table "entries", force: :cascade do |t|
-    t.time "clock_in"
-    t.time "clock_out"
-    t.date "date"
+    t.string "clock_in"
+    t.string "clock_out"
+    t.datetime "date"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.integer "user_id"

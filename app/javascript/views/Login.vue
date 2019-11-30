@@ -32,7 +32,7 @@ export default {
                 this.$router.push( {path: '/dashboard' } )
             })
             .catch(e => {
-                console.log('Can\'t login!')
+                this.$store.dispatch('setFlashMessage', { message: `Error logging in: ${e}`, error: true })
             })
         }
     },

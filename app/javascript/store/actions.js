@@ -14,6 +14,12 @@ export const actions = {
   setAuthToken({commit}, token) {
     commit('setAuthToken', token)
   },
+  setFlashMessage({commit}, message) {
+    commit('setFlashMessage', message)
+  },
+  dismissFlashMessage({commit}) {
+    commit('dismissFlashMessage')
+  },
   setUser({commit}, user) {
     commit('setUser', user)
   },

@@ -42,12 +42,11 @@ export default {
                 password: this.password
             })
             .then(response => {
-                this.$store.dispatch('setUser', response.data.user)
-                this.$store.state.isLoggedIn = true
-                this.$router.push( {path: '/dashboard' } )
+                this.$router.push( {path: '/login' } )
+                this.$store.dispatch('setFlashMessage', { message: 'Account created successfully! Please login below.' })
             })
             .catch(e => {
-                console.log('Can\'t signup!', e)
+                this.$store.dispatch('setFlashMessage', { message: 'Can\'t signup!', error: true })
             })
         }
     },
